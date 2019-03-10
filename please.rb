@@ -15,4 +15,10 @@ class Please < Formula
     system "plz init"
     system "plz build ///pleasings//go:all"
   end
+
+  bottle do
+    root_url "https://homebrew.bintray.com/bottles-please"
+    cellar :any_skip_relocation
+    sha256 "fc2dbe37f068b6bce11cc524b9f0a3e315276983f5f6ef1556fafa8ade2ace8c" => :mojave
+  end
 end
