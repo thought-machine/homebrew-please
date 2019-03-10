@@ -64,7 +64,8 @@ class BottleUploader:
 
     def upload(self, artifact:str):
         """Uploads the given artifact to the new release."""
-        filename = os.path.basename(artifact)
+        filename = os.path.basename(artifact).replace('--', '-')
+        filename = re.sub(r'\.[0-9]+\.tar\.gz', '.tar.gz', filename)
         url = self.upload_url + filename
         if FLAGS.dry_run:
             logging.info('Would upload %s to %s', filename, url)

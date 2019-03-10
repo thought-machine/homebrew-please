@@ -23,7 +23,7 @@ commands:
      - persist_to_workspace:
          root: .
          paths:
-          - please-*.bottle.tar.gz
+          - please-*.bottle.*.tar.gz
 jobs:
     bottle-mojave:
       macos:
@@ -34,6 +34,8 @@ jobs:
     bottle-linux:
       docker:
        - image: linuxbrew/linuxbrew:1.9.3
+      environment:
+        PLZ_ARGS: "-p -o build.passenv:PATH"
       steps:
        - bottle:
            taps: ~/.linuxbrew/Homebrew/Library/Taps
@@ -49,7 +51,7 @@ jobs:
        - persist_to_workspace:
            root: plz-out/bin
            paths:
-            - gen_release.pex
+            - release_bottles.pex
 
     release:
      docker:
