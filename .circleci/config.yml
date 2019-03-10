@@ -34,8 +34,6 @@ jobs:
     bottle-linux:
       docker:
        - image: linuxbrew/linuxbrew:1.9.3
-      environment:
-        PLZ_ARGS: "-p -o build.passenv:PATH"
       steps:
        - bottle:
            taps: ~/.linuxbrew/Homebrew/Library/Taps
