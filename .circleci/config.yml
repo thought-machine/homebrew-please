@@ -1,31 +1,55 @@
 version: "2.1"
+commands:
+  bottle:
+    description: "Build a bottle for a Please release"
+    parameters:
+      taps:
+        type: string
+        default: /usr/local/Homebrew/Library/Taps
+    steps:
+     - checkout
+     - run:
+         name: Tap
+         command: brew tap thought-machine/please
+     - run:
+         name: Update Tap
+         command: cp please.rb << parameters.taps >>/thought-machine/homebrew-please/
+     - run:
+         name: Install
+         command: brew install --build-bottle please
+     - run:
+         name: Bottle
+         command: brew bottle please
+     - persist_to_workspace:
+         root: .
+         paths:
+          - please-*.bottle.tar.gz
 jobs:
     bottle-mojave:
       macos:
         xcode: "10.2.0"
       steps:
-       - run:
-           name: Tap
-           command: brew tap thought-machine/please
-       - run:
-           name: Bottle
-           command: brew bottle please
-       - persist_to_workspace:
-           root: .
-           paths:
-            - please-*.bottle.tar.gz
+       - bottle
 
     bottle-linux:
-     docker:
+      docker:
+       - image: linuxbrew/linuxbrew:1.9.3
+      steps:
+       - bottle:
+           taps: ~/.linuxbrew/Homebrew/Library/Taps
+
+    release-script:
+      docker:
        - image: thoughtmachine/please_ubuntu:20190226
-     steps:
+      steps:
        - checkout
-       - ./pleasew build //:release_bottles
+       - run:
+           name: Build
+           command: ./pleasew build //:release_bottles
        - persist_to_workspace:
-           root: .
+           root: plz-out/bin
            paths:
-            - please-*.bottle.tar.gz
-            - plz-out/bin/gen_release.pex
+            - gen_release.pex
 
     release:
      docker:
@@ -33,16 +57,20 @@ jobs:
      steps:
        - attach_workspace:
            at: /tmp/workspace
-       - run: /tmp/workspace/plz-out/bin/release_bottles.pex --github_token $GITHUB_TOKEN /tmp/workspace/please-*.bottle.tar.gz
+       - run: /tmp/workspace/release_bottles.pex --github_token $GITHUB_TOKEN /tmp/workspace/please-*.bottle.tar.gz
 
 workflows:
   version: 2
   bottle-all:
     jobs:
       - bottle-mojave
+      - bottle-linux
+      - release-script
       - release:
           requires:
             - bottle-mojave
+            - bottle-linux
+            - release-script
           filters:
             branches:
               only: master
