@@ -4,11 +4,14 @@ jobs:
       macos:
         xcode: "10.2.0"
       steps:
-       - checkout
+       - run:
+           name: Tap
+           command: brew tap thought-machine/please
        - run:
            name: Bottle
-           command: brew install --build-bottle ./please.rb
+           command: brew bottle please
        - persist_to_workspace:
+           root: .
            paths:
             - please-*.bottle.tar.gz
 
@@ -19,6 +22,7 @@ jobs:
        - checkout
        - ./pleasew build //:release_bottles
        - persist_to_workspace:
+           root: .
            paths:
             - please-*.bottle.tar.gz
             - plz-out/bin/gen_release.pex
