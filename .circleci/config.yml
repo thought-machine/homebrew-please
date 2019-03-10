@@ -1,0 +1,44 @@
+version: "2.1"
+jobs:
+    bottle-mojave:
+      macos:
+        xcode: "10.2.0"
+      steps:
+       - checkout
+       - run:
+           name: Bottle
+           command: brew install --build-bottle ./please.rb
+       - persist_to_workspace:
+           paths:
+            - please-*.bottle.tar.gz
+
+    bottle-linux:
+     docker:
+       - image: thoughtmachine/please_ubuntu:20190226
+     steps:
+       - checkout
+       - ./pleasew build //:release_bottles
+       - persist_to_workspace:
+           paths:
+            - please-*.bottle.tar.gz
+            - plz-out/bin/gen_release.pex
+
+    release:
+     docker:
+       - image: thoughtmachine/please_ubuntu:20190226
+     steps:
+       - attach_workspace:
+           at: /tmp/workspace
+       - run: /tmp/workspace/plz-out/bin/release_bottles.pex --github_token $GITHUB_TOKEN /tmp/workspace/please-*.bottle.tar.gz
+
+workflows:
+  version: 2
+  bottle-all:
+    jobs:
+      - bottle-mojave
+      - release:
+          requires:
+            - bottle-mojave
+          filters:
+            branches:
+              only: master
