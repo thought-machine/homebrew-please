@@ -70,26 +70,33 @@ class BottleUploader:
         url = self.upload_url + filename
         repacked = self._repack(self.download_url % (self.version, self.version, from_arch))
         if FLAGS.dry_run:
-            logging.info('Would translate %s to %s', filename, url)
+            logging.info('Would upload to %s', url)
             return
         logging.info('Uploading %s to %s', filename, url)
-        with open(artifact, 'rb') as f:
-            self.session.headers.update({'Content-Type': 'application/gzip'})
-            response = self.session.post(url, data=f)
-            response.raise_for_status()
+        response = self.session.post(url, data=repacked,
+                                     headers={'Content-Type': 'application/gzip'})
+        response.raise_for_status()
         logging.info('%s uploaded', filename)
 
     def _repack(self, download_url):
         """Repacks a downloaded tarball into the paths Brew expects."""
-        response = self.session.get(download_url)
+        # Not sure if there is a better way of doing this that doesn't involve buffering the
+        # whole lot into memory? We should really be able to stream it from one to the other...
+        logging.info('Downloading %s...', download_url)
+        response = self.session.get(download_url, stream=True)
         response.raise_for_status()
         b = io.BytesIO()
-        with tarfile.open(fileobj=response.content) as r, tarfile.open(fileobj=b, mode='w|gz') as w:
+        with tarfile.open(fileobj=response.raw) as r, tarfile.open(fileobj=b, mode='w:gz') as w:
             for f in r:
-                print(f)
-        raise ValueError
-
-
+                logging.info('Repacking %s...', f.name)
+                f.name = os.path.join('libexec', f.name[len('please/'):])
+                w.addfile(f, r.extractfile(f))
+            info = tarfile.TarInfo('bin/please')
+            info.type = tarfile.SYMTYPE
+            info.linkname = '../libexec/please'
+            w.addfile(info)
+        b.seek(0)  # Rewind the stream so we can read it again.
+        return b
 
     def determine_version(self) -> str:
         """Determines the current version based on the contents of the Homebrew formula."""
