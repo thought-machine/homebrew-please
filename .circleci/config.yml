@@ -1,78 +1,20 @@
 version: "2.1"
-commands:
-  bottle:
-    description: "Build a bottle for a Please release"
-    parameters:
-      taps:
-        type: string
-        default: /usr/local/Homebrew/Library/Taps
-    steps:
-     - checkout
-     - run:
-         name: Tap
-         command: brew tap thought-machine/please
-     - run:
-         name: Update Tap
-         command: cp please.rb << parameters.taps >>/thought-machine/homebrew-please/
-     - run:
-         name: Install
-         command: brew install --build-bottle please
-     - run:
-         name: Bottle
-         command: brew bottle please
-     - persist_to_workspace:
-         root: .
-         paths:
-          - please-*.bottle.*.tar.gz
+
 jobs:
-    bottle-mojave:
-      macos:
-        xcode: "10.2.0"
-      steps:
-       - bottle
-
-    bottle-linux:
-      docker:
-       - image: linuxbrew/linuxbrew:1.9.3
-      environment:
-        PLZ_ARGS: "-p -o build.passenv:PATH"
-      steps:
-       - bottle:
-           taps: ~/.linuxbrew/Homebrew/Library/Taps
-
-    release-script:
+    repack-bottle:
       docker:
        - image: thoughtmachine/please_ubuntu:20190226
       steps:
        - checkout
        - run:
            name: Build
-           command: ./pleasew build //:release_bottles
-       - persist_to_workspace:
-           root: plz-out/bin
-           paths:
-            - release_bottles.pex
-
-    release:
-     docker:
-       - image: thoughtmachine/please_ubuntu:20190226
-     steps:
-       - attach_workspace:
-           at: /tmp/workspace
-       - run: /tmp/workspace/release_bottles.pex --github_token $GITHUB_TOKEN /tmp/workspace/please-*.bottle.tar.gz
+           command: ./pleasew run //:release_bottles -- --github_token $GITHUB_TOKEN
 
 workflows:
   version: 2
   bottle-all:
     jobs:
-      - bottle-mojave
-      - bottle-linux
-      - release-script
-      - release:
-          requires:
-            - bottle-mojave
-            - bottle-linux
-            - release-script
+      - repack-bottle:
           filters:
             branches:
               only: master
