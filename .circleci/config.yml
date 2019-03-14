@@ -8,7 +8,7 @@ jobs:
        - checkout
        - run:
            name: Build
-           command: ./pleasew run //:release_bottles -- --github_token $GITHUB_TOKEN
+           command: ./pleasew run -p //:release_bottles -- --github_token $GITHUB_TOKEN
 
 workflows:
   version: 2
