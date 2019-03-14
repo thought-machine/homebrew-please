@@ -17,7 +17,7 @@ class Please < Formula
   end
 
   bottle do
-    root_url "https://github.com/thought-machine/homebrew-please/releases/download/v13.4.8/"
+    root_url "https://github.com/thought-machine/homebrew-please/releases/download/v13.4.8"
     cellar :any_skip_relocation
     sha256 "2456db20e2c6b312a2ab67432c7f3d9f611be62a31b0f28431a29f090fa33988" => :el_capitan
     sha256 "f6bd326cc6790dfd6832c2e0086251c7815d742fc8b8853b7a31be2afa75ffb6" => :yosemite

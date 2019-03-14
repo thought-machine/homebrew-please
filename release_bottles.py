@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Script to create Github releases of our bottles."""
 
+import hashlib
 import io
 import json
 import logging
@@ -18,20 +19,23 @@ logging.root.handlers[0].setFormatter(colorlog.ColoredFormatter('%(log_color)s%(
 
 flags.DEFINE_string('github_token', None, 'Github API token')
 flags.DEFINE_bool('dry_run', False, "Don't actually do the release, just print it.")
+flags.DEFINE_string('version', None, 'Version to release (default is current)')
 flags.mark_flag_as_required('github_token')
 FLAGS = flags.FLAGS
 
 
 class BottleUploader:
 
-    def __init__(self, github_token:str, dry_run:bool=False):
+    def __init__(self, github_token:str, dry_run:bool=False, version:str=''):
         self.url = 'https://api.github.com'
         self.releases_url = self.url + '/repos/thought-machine/homebrew-please/releases'
         self.upload_url = self.releases_url.replace('api.', 'uploads.') + '/<id>/assets?name='
         self.download_url = 'https://github.com/thought-machine/please/releases/download/v%s/please_%s_%s.tar.gz'
         self.session = requests.Session()
         self.session.verify = '/etc/ssl/certs/ca-certificates.crt'
-        self.version = self.determine_version()
+        self.version = version or self.determine_version()
+        self.formula = self._extract_formula()
+        self.original_formula = self.formula
         if not dry_run:
             self.session.headers.update({
                 'Accept': 'application/vnd.github.v3+json',
@@ -68,7 +72,8 @@ class BottleUploader:
         """Uploads the given artifact to the new release."""
         filename = 'please-%s.%s.bottle.tar.gz' % (self.version, to_arch)
         url = self.upload_url + filename
-        repacked = self._repack(self.download_url % (self.version, self.version, from_arch))
+        repacked, h = self._repack(self.download_url % (self.version, self.version, from_arch))
+        self._update_formula(to_arch, h)
         if FLAGS.dry_run:
             logging.info('Would upload to %s', url)
             return
@@ -78,7 +83,7 @@ class BottleUploader:
         response.raise_for_status()
         logging.info('%s uploaded', filename)
 
-    def _repack(self, download_url):
+    def _repack(self, download_url:str):
         """Repacks a downloaded tarball into the paths Brew expects."""
         # Not sure if there is a better way of doing this that doesn't involve buffering the
         # whole lot into memory? We should really be able to stream it from one to the other...
@@ -99,16 +104,17 @@ class BottleUploader:
             info = tarfile.TarInfo(prefix + 'LICENSE')
             w.addfile(info, io.BytesIO(pkgutil.get_data(__name__, 'LICENSE')))
             info = tarfile.TarInfo(prefix + '.brew/please.rb')
-            w.addfile(info, io.BytesIO(pkgutil.get_data(__name__, 'please.rb')))
+            w.addfile(info, io.StringIO(self.original_formula))
         b.seek(0)  # Rewind the stream so we can read it again.
-        return b
+        h = hashlib.sha256(b.read()).hexdigest()
+        b.seek(0)
+        return b, h
 
     def determine_version(self) -> str:
         """Determines the current version based on the contents of the Homebrew formula."""
-        data = pkgutil.get_data(__name__, 'please.rb')
         m = re.search(
             r'url \"https://github.com/thought-machine/please/archive/v([0-9\.]+).tar.gz\"',
-            data.decode('utf-8'),
+            self.formula,
         )
         if not m:
             logging.fatal('Failed to determine version from Homebrew formula.')
@@ -116,9 +122,28 @@ class BottleUploader:
         logging.info('Determined version to be %s', m.group(1))
         return m.group(1)
 
+    def _update_formula(self, to_arch:str, digest:str):
+        """Updates the Homebrew formula (if it exists) with the given digest."""
+        if not os.path.exists('please.rb'):
+            logging.warn("Can't find please.rb, will not update")
+            return
+        self.formula = re.sub(
+            r'sha256 \"[0-9a-f]+\" => :' + to_arch,
+            f'sha256 "{digest}" => :' + to_arch,
+            self.formula,
+        )
+        with open('please.rb', 'w') as f:
+            f.write(self.formula)
+
+    def _extract_formula(self) -> str:
+        """Extracts the formula and updates its version."""
+        f = pkgutil.get_data(__name__, 'please.rb').decode('utf-8')
+        f = re.sub(r'archive/v[0-9\.]+.tar.gz', f'archive/v{self.version}.tar.gz', f)
+        return re.sub(r'releases/download/v[0-9\.]+\"', f'releases/download/v{self.version}', f)
+
 
 def main(argv):
-    b = BottleUploader(FLAGS.github_token, dry_run=FLAGS.dry_run)
+    b = BottleUploader(FLAGS.github_token, dry_run=FLAGS.dry_run, version=FLAGS.version)
     if not b.needs_release():
         logging.info('Current version has already been released, nothing to be done!')
         return
