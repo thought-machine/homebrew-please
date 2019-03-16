@@ -36,6 +36,7 @@ class BottleUploader:
         self.session.verify = '/etc/ssl/certs/ca-certificates.crt'
         self.version = version or self.determine_version()
         logging.info('Releasing version %s', self.version)
+        self.is_prerelease = 'a' in self.version or 'b' in self.version
         self.formula = self._extract_formula()
         self.original_formula = self.formula
         if not dry_run:
@@ -58,7 +59,7 @@ class BottleUploader:
             'target_commitish': os.environ.get('CIRCLE_SHA1'),
             'name': 'Please bottles for v' + self.version,
             'body': 'Homebrew bottles (pre-built releases) for Please v' + self.version,
-            'draft': True,
+            'prerelease': self.is_prerelease,
         }
         if FLAGS.dry_run:
             logging.info('Would post the following to Github: %s', json.dumps(data, indent=4))
