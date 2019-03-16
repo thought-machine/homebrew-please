@@ -28,12 +28,14 @@ class BottleUploader:
 
     def __init__(self, github_token:str, dry_run:bool=False, version:str=''):
         self.url = 'https://api.github.com'
+        self.please_url = self.url + '/repos/thought-machine/please/releases/latest'
         self.releases_url = self.url + '/repos/thought-machine/homebrew-please/releases'
         self.upload_url = self.releases_url.replace('api.', 'uploads.') + '/<id>/assets?name='
         self.download_url = 'https://github.com/thought-machine/please/releases/download/v%s/please_%s_%s.tar.gz'
         self.session = requests.Session()
         self.session.verify = '/etc/ssl/certs/ca-certificates.crt'
         self.version = version or self.determine_version()
+        logging.info('Releasing version %s', self.version)
         self.formula = self._extract_formula()
         self.original_formula = self.formula
         if not dry_run:
@@ -115,16 +117,11 @@ class BottleUploader:
         return b, h
 
     def determine_version(self) -> str:
-        """Determines the current version based on the contents of the Homebrew formula."""
-        m = re.search(
-            r'url \"https://github.com/thought-machine/please/archive/v([0-9\.]+).tar.gz\"',
-            self.formula,
-        )
-        if not m:
-            logging.fatal('Failed to determine version from Homebrew formula.')
-            sys.exit(1)
-        logging.info('Determined version to be %s', m.group(1))
-        return m.group(1)
+        """Determines the current version of the latest Please release."""
+        resp = self.session.get(self.please_url)
+        resp.raise_for_status()
+        data = resp.json()
+        return data['tag_name'].strip('v')
 
     def _update_formula(self, to_arch:str, digest:str):
         """Updates the Homebrew formula (if it exists) with the given digest."""
