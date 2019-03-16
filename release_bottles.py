@@ -101,6 +101,10 @@ class BottleUploader:
             info.type = tarfile.SYMTYPE
             info.linkname = '../libexec/please'
             w.addfile(info)
+            info = tarfile.TarInfo(prefix + '/bin/plz')
+            info.type = tarfile.SYMTYPE
+            info.linkname = '../libexec/please'
+            w.addfile(info)
             info = tarfile.TarInfo(prefix + 'LICENSE')
             w.addfile(info, io.BytesIO(pkgutil.get_data(__name__, 'LICENSE')))
             info = tarfile.TarInfo(prefix + '.brew/please.rb')
