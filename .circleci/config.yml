@@ -5,6 +5,9 @@ jobs:
       docker:
        - image: thoughtmachine/please_ubuntu:20190226
       steps:
+       - add_ssh_keys:
+           fingerprints:
+             - "fc:5b:1e:b2:a7:00:25:07:b2:84:78:e0:12:e8:74:6b"
        - checkout
        - run:
            name: Build

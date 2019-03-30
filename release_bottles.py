@@ -143,6 +143,12 @@ class BottleUploader:
         f = re.sub(r'archive/v[0-9\.]+.tar.gz', f'archive/v{self.version}.tar.gz', f)
         return re.sub(r'releases/download/v[0-9\.]+\"', f'releases/download/v{self.version}', f)
 
+    def commit(self):
+        """Commits changes to the repo & pushes them."""
+        subprocess.check_call(['git', 'commit', 'please.rb',
+                               '-m', 'Release version ' + self.version])
+        subprocess.check_call(['git', 'push', 'origin', 'master'])
+
 
 def main(argv):
     b = BottleUploader(FLAGS.github_token, dry_run=FLAGS.dry_run, version=FLAGS.version)
@@ -154,6 +160,7 @@ def main(argv):
     b.upload('darwin_amd64', 'el_capitan')
     b.upload('darwin_amd64', 'yosemite')
     b.upload('darwin_amd64', 'mojave')
+    b.commit()
 
 
 if __name__ == '__main__':
