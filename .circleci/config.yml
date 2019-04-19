@@ -1,7 +1,7 @@
 version: "2.1"
 
 jobs:
-    repack-bottle:
+    build:
       docker:
        - image: thoughtmachine/please_ubuntu:20190226
       steps:
@@ -17,7 +17,7 @@ workflows:
   version: 2
   bottle-all:
     jobs:
-      - repack-bottle:
+      - build:
           filters:
             branches:
               only: master
