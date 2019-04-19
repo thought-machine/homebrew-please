@@ -145,6 +145,8 @@ class BottleUploader:
 
     def commit(self):
         """Commits changes to the repo & pushes them."""
+        subprocess.check_call(['git', 'config', 'user.email', 'the-hogfather@thoughtmachine.net'])
+        subprocess.check_call(['git', 'config', 'user.name', 'The Hogfather'])
         subprocess.check_call(['git', 'commit', 'please.rb',
                                '-m', 'Release version ' + self.version])
         subprocess.check_call(['git', 'push', 'origin', 'master'])
