@@ -141,7 +141,7 @@ class BottleUploader:
         """Extracts the formula and updates its version."""
         f = pkgutil.get_data(__name__, 'please.rb').decode('utf-8')
         f = re.sub(r'archive/v[0-9\.]+.tar.gz', f'archive/v{self.version}.tar.gz', f)
-        return re.sub(r'releases/download/v[0-9\.]+\"', f'releases/download/v{self.version}', f)
+        return re.sub(r'releases/download/v[0-9\.]+\"', f'releases/download/v{self.version}"', f)
 
     def commit(self):
         """Commits changes to the repo & pushes them."""
