@@ -1,7 +1,7 @@
 class Please < Formula
   desc "High-performance extensible build system for reproducible builds."
   homepage "https://please.build"
-  url "https://github.com/thought-machine/please/archive/v14.1.5.tar.gz"
+  url "https://github.com/thought-machine/please/archive/v14.1.6.tar.gz"
   sha256 "6953ed196d8871ce977ff5649a6ebf40371bd699f09204560e8083ae140babf1"
   depends_on "go" => :build
 
@@ -17,11 +17,11 @@ class Please < Formula
   end
 
   bottle do
-    root_url "https://github.com/thought-machine/homebrew-please/releases/download/v14.1.5"
+    root_url "https://github.com/thought-machine/homebrew-please/releases/download/v14.1.6"
     cellar :any_skip_relocation
-    sha256 "935f78b1fdc32ca802c404e64298b661193e01738e6548bf72b6d0865a072d3a" => :el_capitan
-    sha256 "97767ede1c70e39e7f47532dcb4bd4f7907b3eb52d81854664fa2da137ae7c9b" => :yosemite
-    sha256 "7219c6e30a3da536890ead980c98083b562899e4df9599d65d3167e0dcddca1e" => :mojave
-    sha256 "a8aeb344f7d31cfb0a33d43389f263d8f50e702ae83c4160c08407b08bc9a121" => :linux_x86_64
+    sha256 "3e8319d466edd29bd8353ea287d8c86ea5e3e384eb02f60264e190fbf0ded1ed" => :el_capitan
+    sha256 "f70f329ce6c155da4921dceab272a010c0233ce97294709c8f441c3c015b3275" => :yosemite
+    sha256 "8bc6d6e05f5c16acb91d468dc42db274ffe14cb23d2881250db4db6e8dd4b124" => :mojave
+    sha256 "c83a5b8fd17316829b8f84d6340668ad44ad6e57066c0818396ae011fa6b0c20" => :linux_x86_64
   end
 end
