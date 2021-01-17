@@ -2,7 +2,6 @@ class Please < Formula
   desc "High-performance extensible build system for reproducible builds."
   homepage "https://please.build"
   url "https://github.com/thought-machine/please/archive/v15.12.0.tar.gz"
-  sha256 "6953ed196d8871ce977ff5649a6ebf40371bd699f09204560e8083ae140babf1"
   depends_on "go" => :build
 
   def install
