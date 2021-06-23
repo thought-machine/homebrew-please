@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+k#!/usr/bin/env python3
 """Script to create Github releases of our bottles."""
 
 import hashlib
@@ -130,8 +130,8 @@ class BottleUploader:
             logging.warn("Can't find please.rb, will not update")
             return
         self.formula = re.sub(
-            r'sha256 \"[0-9a-f]+\" => :' + to_arch,
-            f'sha256 "{digest}" => :' + to_arch,
+            fr'sha256 cellar: :any_skip_relocation, {to_arch} +:\"[0-9a-f]+\"',
+            fr'sha256 cellar: :any_skip_relocation, {to_arch} :"{digest}"',
             self.formula,
         )
         with open('please.rb', 'w') as f:
