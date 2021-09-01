@@ -1,4 +1,4 @@
-k#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Script to create Github releases of our bottles."""
 
 import hashlib
