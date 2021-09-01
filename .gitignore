@@ -1,2 +1,4 @@
 *.bottle.tar.gz
 plz-out
+
+.idea
