@@ -130,8 +130,8 @@ class BottleUploader:
             logging.warn("Can't find please.rb, will not update")
             return
         self.formula = re.sub(
-            fr'sha256 cellar: :any_skip_relocation, {to_arch} +:\"[0-9a-f]+\"',
-            fr'sha256 cellar: :any_skip_relocation, {to_arch} :"{digest}"',
+            fr'sha256 cellar: :any_skip_relocation, {to_arch}\s*:\s*\"[0-9a-f]+\"',
+            fr'sha256 cellar: :any_skip_relocation, {to_arch}: "{digest}"',
             self.formula,
         )
         with open('please.rb', 'w') as f:
