@@ -6,7 +6,7 @@ class Please < Formula
   desc "High-performance extensible build system for reproducible builds"
   homepage "https://please.build"
   url "https://github.com/thought-machine/please/archive/v16.12.1.tar.gz"
-  sha256 "6953ed196d8871ce977ff5649a6ebf40371bd699f09204560e8083ae140babf1"
+  sha256 "d05d89f1f77a8ceb438a78d23edf02e0ab7a2c3516076239c0871fef18fffd3d"
   bottle do
     root_url "https://github.com/thought-machine/homebrew-please/releases/download/v16.12.1"
     sha256 cellar: :any_skip_relocation, el_capitan: "aca780ebe9718c38ed55a203820a46679a00675028ccb71da9b4105e44911d8b"
