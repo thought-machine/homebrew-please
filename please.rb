@@ -6,7 +6,7 @@ class Please < Formula
   desc "High-performance extensible build system for reproducible builds"
   homepage "https://please.build"
   url "https://github.com/thought-machine/please/archive/v16.13.0.tar.gz"
-  sha256 "6953ed196d8871ce977ff5649a6ebf40371bd699f09204560e8083ae140babf1"
+  sha256 "955d0055d11e8d142e938e87986962d591736eb8b030d5b11ef6d3b966e6f6cc"
   bottle do
     root_url "https://github.com/thought-machine/homebrew-please/releases/download/v16.13.0"
     sha256 cellar: :any_skip_relocation, el_capitan: "8a0711deb8f8896fc17f31e38a1baa6bb098c07d5db407dee2b57b5f81c20adf"
@@ -19,7 +19,7 @@ class Please < Formula
 
   def install
     system "./bootstrap.sh", "--skip_tests"
-    libexec.install Dir["plz-out/gen/package/*"]
+    libexec.install Dir["plz-out/bin/package/*"]
     bin.install_symlink libexec/"please"
   end
 
