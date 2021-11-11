@@ -12,8 +12,8 @@ import subprocess
 import sys
 import tarfile
 
-from third_party.python import colorlog, requests
-from third_party.python.absl import app, flags
+import colorlog, requests
+from absl import app, flags
 
 logging.root.handlers[0].setFormatter(colorlog.ColoredFormatter('%(log_color)s%(levelname)s: %(message)s'))
 
@@ -137,10 +137,18 @@ class BottleUploader:
         with open('please.rb', 'w') as f:
             f.write(self.formula)
 
+    def _hash_remote_file(self, url):
+        response = self.session.get(url, stream=True)
+        response.raise_for_status()
+        return hashlib.sha256(response.raw.read()).hexdigest()
+
     def _extract_formula(self) -> str:
         """Extracts the formula and updates its version."""
+        hash = self._hash_remote_file("https://github.com/thought-machine/please/archive/v%s.tar.gz" % self.version)
+
         f = pkgutil.get_data(__name__, 'please.rb').decode('utf-8')
         f = re.sub(r'archive/v[0-9\.]+.tar.gz', f'archive/v{self.version}.tar.gz', f)
+        f = re.sub(r'sha256 "[0-9a-f]+"', 'sha256 "%s"' % hash, f)
         return re.sub(r'releases/download/v[0-9\.]+\"', f'releases/download/v{self.version}"', f)
 
     def commit(self):
