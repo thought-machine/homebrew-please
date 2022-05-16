@@ -19,7 +19,7 @@ class Please < Formula
 
   def install
     system "./bootstrap.sh", "--skip_tests"
-    libexec.install Dir["plz-out/bin/package/*"]
+    libexec.install Dir["plz-out/bin/src/*"]
     bin.install_symlink libexec/"please"
   end
 
