@@ -5,14 +5,14 @@
 class Please < Formula
   desc "High-performance extensible build system for reproducible builds"
   homepage "https://please.build"
-  url "https://github.com/thought-machine/please/archive/v16.20.3.tar.gz"
-  sha256 "6af16d3156420d6ab9e3c2dd98581f4261ac3fe19fe82c7b6ab9ea2560e1bfc8"
+  url "https://github.com/thought-machine/please/archive/v16.20.4.tar.gz"
+  sha256 "87e1503185ff2e0634eaa62f825f46ae3cd860c3834e30706e0eb44e8b48f604"
   bottle do
-    root_url "https://github.com/thought-machine/homebrew-please/releases/download/v16.20.3"
-    sha256 cellar: :any_skip_relocation, el_capitan: "bd075edcb483aee0504f529703ff8b42455fbdf270775336e419f59420407851"
-    sha256 cellar: :any_skip_relocation, yosemite: "974436ccee2c4142111b939698cd0cf17eb27614c3b302fcaee957b7476ef79c"
-    sha256 cellar: :any_skip_relocation, mojave: "f74334018c545e7f458abb1d2f80fe28ed7e6f38510baa5d9c6d8abb0706a893"
-    sha256 cellar: :any_skip_relocation, linux_x86_64: "8e7a6cb16f827f5745f8c44cc769b3020d4a2e168f9db3f6471e41f906b3d080"
+    root_url "https://github.com/thought-machine/homebrew-please/releases/download/v16.20.4"
+    sha256 cellar: :any_skip_relocation, el_capitan: "dcd93499256c3f3edd420c41314ebec00c32114140dbc20c7190579ada8b5719"
+    sha256 cellar: :any_skip_relocation, yosemite: "7ff153650a1694d7a121189f1b89490a5c21584de052b6fda6ca050aa06582d1"
+    sha256 cellar: :any_skip_relocation, mojave: "1984def0fc234de97405028c8ee74ca91b4696b892762deaafb871dd654e2708"
+    sha256 cellar: :any_skip_relocation, linux_x86_64: "2ec24af1f7af4ff853a3f08ca438635a9b1fa99bbea164318c6947cc06050f43"
   end
 
   depends_on "go" => :build
