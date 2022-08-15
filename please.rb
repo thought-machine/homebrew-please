@@ -18,9 +18,8 @@ class Please < Formula
   depends_on "go" => :build
 
   def install
-    system "./bootstrap.sh", "--skip_tests"
-    libexec.install Dir["plz-out/bin/src/*"]
-    bin.install_symlink libexec/"please"
+    system "./bootstrap.sh", "--skip_tests", "-p"
+    bin.install "plz-out/bin/src/please" => "plz" 
   end
 
   test do
