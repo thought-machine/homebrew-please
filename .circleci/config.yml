@@ -3,7 +3,7 @@ version: "2.1"
 jobs:
     build:
       docker:
-       - image: thoughtmachine/please_ubuntu:20190226
+       - image: ghcr.io/thought-machine/please_ubuntu:20250318
       steps:
        - add_ssh_keys:
            fingerprints:
