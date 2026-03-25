@@ -1,27 +1,40 @@
 #!/usr/bin/env python3
 """Script to create Github releases of our bottles."""
 
+import argparse
 import hashlib
 import io
 import json
 import logging
 import os
-import re
 import pkgutil
+import re
 import subprocess
 import sys
 import tarfile
+import urllib.request
 
-import colorlog, requests
-from absl import app, flags
+log = logging.getLogger(__name__)
 
-logging.root.handlers[0].setFormatter(colorlog.ColoredFormatter('%(log_color)s%(levelname)s: %(message)s'))
+# ANSI color codes for log output.
+_COLORS = {
+    'DEBUG': '\033[36m',     # cyan
+    'INFO': '\033[32m',      # green
+    'WARNING': '\033[33m',   # yellow
+    'ERROR': '\033[31m',     # red
+    'CRITICAL': '\033[1;31m', # bold red
+}
+_RESET = '\033[0m'
 
-flags.DEFINE_string('github_token', None, 'Github API token')
-flags.DEFINE_bool('dry_run', False, "Don't actually do the release, just print it.")
-flags.DEFINE_string('version', None, 'Version to release (default is current)')
-flags.mark_flag_as_required('github_token')
-FLAGS = flags.FLAGS
+
+class ColorFormatter(logging.Formatter):
+    def format(self, record):
+        color = _COLORS.get(record.levelname, '')
+        return f'{color}{record.levelname}{_RESET}: {record.getMessage()}'
+
+
+logging.basicConfig(level=logging.INFO)
+logging.root.handlers[0].setFormatter(ColorFormatter())
 
 
 class BottleUploader:
@@ -32,25 +45,43 @@ class BottleUploader:
         self.releases_url = self.url + '/repos/thought-machine/homebrew-please/releases'
         self.upload_url = self.releases_url.replace('api.', 'uploads.') + '/<id>/assets?name='
         self.download_url = 'https://github.com/thought-machine/please/releases/download/v%s/please_%s_%s.tar.gz'
-        self.session = requests.Session()
-        self.session.verify = '/etc/ssl/certs/ca-certificates.crt'
+        self.github_token = github_token
+        self.dry_run = dry_run
         self.version = version or self.determine_version()
-        logging.info('Releasing version %s', self.version)
+        log.info('Releasing version %s', self.version)
         self.is_prerelease = 'a' in self.version or 'b' in self.version
         self.formula = self._extract_formula()
         self.original_formula = self.formula
-        if not dry_run:
-            self.session.headers.update({
-                'Accept': 'application/vnd.github.v3+json',
-                'Authorization': 'token ' + github_token,
-            })
+
+    def _request(self, url, data=None, headers=None, method=None):
+        """Makes an HTTP request with GitHub auth headers."""
+        hdrs = {
+            'Accept': 'application/vnd.github.v3+json',
+        }
+        if not self.dry_run:
+            hdrs['Authorization'] = 'token ' + self.github_token
+        if headers:
+            hdrs.update(headers)
+        req = urllib.request.Request(url, data=data, headers=hdrs, method=method)
+        try:
+            resp = urllib.request.urlopen(req)
+            return resp.getcode(), resp.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
+
+    def _get_json(self, url):
+        """GET a URL and return parsed JSON."""
+        code, body = self._request(url)
+        if code >= 400:
+            raise RuntimeError(f'GET {url} returned {code}: {body.decode()}')
+        return json.loads(body)
 
     def needs_release(self):
         """Returns true if the current version is not yet released to Github."""
         url = self.releases_url + '/tags/v' + self.version
-        logging.info('Checking %s for release...', url)
-        response = self.session.get(url)
-        return response.status_code == 404
+        log.info('Checking %s for release...', url)
+        code, _ = self._request(url)
+        return code == 404
 
     def release(self):
         """Submits a new release to Github."""
@@ -61,15 +92,20 @@ class BottleUploader:
             'body': 'Homebrew bottles (pre-built releases) for Please v' + self.version,
             'prerelease': self.is_prerelease,
         }
-        if FLAGS.dry_run:
-            logging.info('Would post the following to Github: %s', json.dumps(data, indent=4))
+        if self.dry_run:
+            log.info('Would post the following to Github: %s', json.dumps(data, indent=4))
             return
-        logging.info('Creating release: %s',  json.dumps(data, indent=4))
-        response = self.session.post(self.releases_url, json=data)
-        response.raise_for_status()
-        data = response.json()
-        self.upload_url = data['upload_url'].replace('{?name,label}', '?name=')
-        logging.info('Release id %s created', data['id'])
+        log.info('Creating release: %s', json.dumps(data, indent=4))
+        code, body = self._request(
+            self.releases_url,
+            data=json.dumps(data).encode(),
+            headers={'Content-Type': 'application/json'},
+        )
+        if code >= 400:
+            raise RuntimeError(f'POST {self.releases_url} returned {code}: {body.decode()}')
+        resp = json.loads(body)
+        self.upload_url = resp['upload_url'].replace('{?name,label}', '?name=')
+        log.info('Release id %s created', resp['id'])
 
     def upload(self, from_arch:str, to_arch:str):
         """Uploads the given artifact to the new release."""
@@ -77,27 +113,28 @@ class BottleUploader:
         url = self.upload_url + filename
         repacked, h = self._repack(self.download_url % (self.version, self.version, from_arch))
         self._update_formula(to_arch, h)
-        if FLAGS.dry_run:
-            logging.info('Would upload to %s', url)
+        if self.dry_run:
+            log.info('Would upload to %s', url)
             return
-        logging.info('Uploading %s to %s', filename, url)
-        response = self.session.post(url, data=repacked,
-                                     headers={'Content-Type': 'application/gzip'})
-        response.raise_for_status()
-        logging.info('%s uploaded', filename)
+        log.info('Uploading %s to %s', filename, url)
+        code, body = self._request(
+            url,
+            data=repacked.read(),
+            headers={'Content-Type': 'application/gzip'},
+        )
+        if code >= 400:
+            raise RuntimeError(f'POST {url} returned {code}: {body.decode()}')
+        log.info('%s uploaded', filename)
 
     def _repack(self, download_url:str):
         """Repacks a downloaded tarball into the paths Brew expects."""
-        # Not sure if there is a better way of doing this that doesn't involve buffering the
-        # whole lot into memory? We should really be able to stream it from one to the other...
-        logging.info('Downloading %s...', download_url)
-        response = self.session.get(download_url, stream=True)
-        response.raise_for_status()
+        log.info('Downloading %s...', download_url)
+        resp = urllib.request.urlopen(download_url)
         b = io.BytesIO()
         prefix = os.path.join('please', self.version)
-        with tarfile.open(fileobj=response.raw) as r, tarfile.open(fileobj=b, mode='w:gz') as w:
+        with tarfile.open(fileobj=resp, mode='r|gz') as r, tarfile.open(fileobj=b, mode='w:gz') as w:
             for f in r:
-                logging.info('Repacking %s...', f.name)
+                log.info('Repacking %s...', f.name)
                 f.name = os.path.join(prefix, 'libexec', f.name[len('please/'):])
                 w.addfile(f, r.extractfile(f))
             info = tarfile.TarInfo(prefix + '/bin/please')
@@ -117,25 +154,23 @@ class BottleUploader:
             info.linkname = '../libexec/please_sandbox'
             w.addfile(info)
             info = tarfile.TarInfo(prefix + '/LICENSE')
-            w.addfile(info, io.BytesIO(pkgutil.get_data(__name__, 'LICENSE')))
+            w.addfile(info, io.BytesIO(self._read_resource('LICENSE')))
             info = tarfile.TarInfo(prefix + '/.brew/please.rb')
             w.addfile(info, io.BytesIO(self.original_formula.encode('utf-8')))
-        b.seek(0)  # Rewind the stream so we can read it again.
+        b.seek(0)
         h = hashlib.sha256(b.read()).hexdigest()
         b.seek(0)
         return b, h
 
     def determine_version(self) -> str:
         """Determines the current version of the latest Please release."""
-        resp = self.session.get(self.please_url)
-        resp.raise_for_status()
-        data = resp.json()
+        data = self._get_json(self.please_url)
         return data['tag_name'].strip('v')
 
     def _update_formula(self, to_arch:str, digest:str):
         """Updates the Homebrew formula (if it exists) with the given digest."""
         if not os.path.exists('please.rb'):
-            logging.warn("Can't find please.rb, will not update")
+            log.warning("Can't find please.rb, will not update")
             return
         self.formula = re.sub(
             fr'sha256 cellar: :any_skip_relocation, {to_arch}\s*:\s*\"[0-9a-f]+\"',
@@ -146,17 +181,28 @@ class BottleUploader:
             f.write(self.formula)
 
     def _hash_remote_file(self, url):
-        response = self.session.get(url, stream=True)
-        response.raise_for_status()
-        return hashlib.sha256(response.raw.read()).hexdigest()
+        resp = urllib.request.urlopen(url)
+        return hashlib.sha256(resp.read()).hexdigest()
+
+    def _read_resource(self, filename):
+        """Read a bundled resource file."""
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(script_dir, filename)
+        if os.path.exists(path):
+            with open(path, 'rb') as f:
+                return f.read()
+        data = pkgutil.get_data(__name__, filename)
+        if data is None:
+            raise FileNotFoundError(f'Could not find resource: {filename}')
+        return data
 
     def _extract_formula(self) -> str:
         """Extracts the formula and updates its version."""
-        hash = self._hash_remote_file("https://github.com/thought-machine/please/archive/v%s.tar.gz" % self.version)
+        h = self._hash_remote_file("https://github.com/thought-machine/please/archive/refs/tags/v%s.tar.gz" % self.version)
 
-        f = pkgutil.get_data(__name__, 'please.rb').decode('utf-8')
-        f = re.sub(r'archive/v[0-9\.]+.tar.gz', f'archive/v{self.version}.tar.gz', f)
-        f = re.sub(r'sha256 "[0-9a-f]+"', 'sha256 "%s"' % hash, f)
+        f = self._read_resource('please.rb').decode('utf-8')
+        f = re.sub(r'archive/refs/tags/v[0-9\.]+.tar.gz', f'archive/refs/tags/v{self.version}.tar.gz', f)
+        f = re.sub(r'sha256 "[0-9a-f]+"', 'sha256 "%s"' % h, f)
         return re.sub(r'releases/download/v[0-9\.]+\"', f'releases/download/v{self.version}"', f)
 
     def commit(self):
@@ -168,10 +214,16 @@ class BottleUploader:
         subprocess.check_call(['git', 'push', 'origin', 'master'])
 
 
-def main(argv):
-    b = BottleUploader(FLAGS.github_token, dry_run=FLAGS.dry_run, version=FLAGS.version)
+def main():
+    parser = argparse.ArgumentParser(description='Create Github releases of Homebrew bottles.')
+    parser.add_argument('--github_token', required=True, help='Github API token')
+    parser.add_argument('--dry_run', action='store_true', help="Don't actually do the release, just print it.")
+    parser.add_argument('--version', default='', help='Version to release (default is latest)')
+    args = parser.parse_args()
+
+    b = BottleUploader(args.github_token, dry_run=args.dry_run, version=args.version)
     if not b.needs_release():
-        logging.info('Current version has already been released, nothing to be done!')
+        log.info('Current version has already been released, nothing to be done!')
         return
     b.release()
     b.upload('darwin_arm64', 'arm64_sequoia')
@@ -180,8 +232,11 @@ def main(argv):
     b.upload('darwin_amd64', 'sonoma')
     b.upload('linux_amd64', 'x86_64_linux')
     b.upload('linux_arm64', 'arm64_linux')
-    b.commit()
+    if not args.dry_run:
+        b.commit()
+    else:
+        log.info('Dry run, skipping commit and push')
 
 
 if __name__ == '__main__':
-    app.run(main)
+    main()
