@@ -108,10 +108,18 @@ class BottleUploader:
             info.type = tarfile.SYMTYPE
             info.linkname = '../libexec/please'
             w.addfile(info)
-            info = tarfile.TarInfo(prefix + 'LICENSE')
+            info = tarfile.TarInfo(prefix + '/bin/build_langserver')
+            info.type = tarfile.SYMTYPE
+            info.linkname = '../libexec/build_langserver'
+            w.addfile(info)
+            info = tarfile.TarInfo(prefix + '/bin/please_sandbox')
+            info.type = tarfile.SYMTYPE
+            info.linkname = '../libexec/please_sandbox'
+            w.addfile(info)
+            info = tarfile.TarInfo(prefix + '/LICENSE')
             w.addfile(info, io.BytesIO(pkgutil.get_data(__name__, 'LICENSE')))
-            info = tarfile.TarInfo(prefix + '.brew/please.rb')
-            w.addfile(info, io.StringIO(self.original_formula))
+            info = tarfile.TarInfo(prefix + '/.brew/please.rb')
+            w.addfile(info, io.BytesIO(self.original_formula.encode('utf-8')))
         b.seek(0)  # Rewind the stream so we can read it again.
         h = hashlib.sha256(b.read()).hexdigest()
         b.seek(0)
@@ -166,10 +174,12 @@ def main(argv):
         logging.info('Current version has already been released, nothing to be done!')
         return
     b.release()
-    b.upload('linux_amd64', 'linux_x86_64')
-    b.upload('darwin_amd64', 'el_capitan')
-    b.upload('darwin_amd64', 'yosemite')
-    b.upload('darwin_amd64', 'mojave')
+    b.upload('darwin_arm64', 'arm64_sequoia')
+    b.upload('darwin_arm64', 'arm64_sonoma')
+    b.upload('darwin_amd64', 'sequoia')
+    b.upload('darwin_amd64', 'sonoma')
+    b.upload('linux_amd64', 'x86_64_linux')
+    b.upload('linux_arm64', 'arm64_linux')
     b.commit()
 
 
