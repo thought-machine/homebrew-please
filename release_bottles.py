@@ -53,12 +53,12 @@ class BottleUploader:
         self.formula = self._extract_formula()
         self.original_formula = self.formula
 
-    def _request(self, url, data=None, headers=None, method=None):
+    def _request(self, url, data=None, headers=None, method=None, auth=True):
         """Makes an HTTP request with GitHub auth headers."""
         hdrs = {
             'Accept': 'application/vnd.github.v3+json',
         }
-        if not self.dry_run:
+        if auth and not self.dry_run:
             hdrs['Authorization'] = 'token ' + self.github_token
         if headers:
             hdrs.update(headers)
@@ -69,9 +69,9 @@ class BottleUploader:
         except urllib.error.HTTPError as e:
             return e.code, e.read()
 
-    def _get_json(self, url):
+    def _get_json(self, url, auth=True):
         """GET a URL and return parsed JSON."""
-        code, body = self._request(url)
+        code, body = self._request(url, auth=auth)
         if code >= 400:
             raise RuntimeError(f'GET {url} returned {code}: {body.decode()}')
         return json.loads(body)
@@ -164,7 +164,7 @@ class BottleUploader:
 
     def determine_version(self) -> str:
         """Determines the current version of the latest Please release."""
-        data = self._get_json(self.please_url)
+        data = self._get_json(self.please_url, auth=False)
         return data['tag_name'].strip('v')
 
     def _update_formula(self, to_arch:str, digest:str):
