@@ -1,2 +1,5 @@
-[python]
-moduledir = third_party/python
+[Parse]
+preloadsubincludes = ///python//build_defs:python
+
+[Plugin "python"]
+Target = //plugins:python
